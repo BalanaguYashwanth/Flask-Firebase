@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    {{id}}
+    <form action="{{url_for(update,id=id)}}">
+        <input type="text" name="user" >
+        <input type="text" name="age" >
+        <input type="text" name="email" >
+    </form>
+</body>
+</html>

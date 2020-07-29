@@ -1,0 +1,12 @@
+{% extends 'layout.html' %}
+{% block content %}
+    {% for post in posts%}
+      Blog name:{{post.author}} 
+      <br>
+      title: {{post.title}}
+      <br>
+      Blog posted on:{{post.date_posted}} 
+      <br>
+      <br>
+    {% endfor %}
+{% endblock%}
