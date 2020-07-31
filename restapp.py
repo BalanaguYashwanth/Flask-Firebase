@@ -33,6 +33,12 @@ def post():
     return jsonify({'res':somejson})
 
 
+@app.route('/post2',methods=['POST'])
+def post2():
+    somejson=request.get_json()
+    return jsonify({'res':somejson})
+
+
 if __name__=='__main__':
     app.run(debug=True)
 
