@@ -17,9 +17,32 @@ db = firestore.client()
 pb = pyrebase.initialize_app(json.load(open('fbconfig.json')))
 todo_ref = db.collection('todos')
 
-@app.route('/dummy/<object>',methods=['GET'])
-def done(object):
-    return jsonify({'result':object})
+@app.route('/getcurrentuser',methods=['POST'])
+def done():
+    alldetails={}
+    uid=request.json['uid']
+    print(uid)
+    user = auth.get_user(uid)
+    # moredata=auth.update_user(
+    #     uid,
+    # )
+    alldetails['uid']=user.uid
+    alldetails['display_name']=user.display_name
+    alldetails['email']=user.email
+    alldetails['photo_url']=user.photo_url
+    alldetails['owner']=user.custom_claims.get('owner')
+    return alldetails
+
+
+@app.route('/updateuser',methods=['POST'])
+def users():
+    uid=request.json['uid']
+    user=auth.update_user(
+        uid,
+        photo_url=request.json['photourl'],
+        display_name=request.json['displayname'],
+    )
+    return 'done'
 
 
 @app.route('/signup',methods=['POST'])
