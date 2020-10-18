@@ -8,6 +8,8 @@ from firebase_admin import auth
 from werkzeug.security import generate_password_hash
 from firebase_admin import credentials, firestore, initialize_app
 from flask_cors import CORS
+import requests
+#from exceptions import Exception
 
 app = Flask(__name__)
 CORS(app)
@@ -29,6 +31,7 @@ def done():
         alldetails['display_name']=user.display_name
         alldetails['email']=user.email
         alldetails['photo_url']=user.photo_url
+        alldetails['emailverified']=user.email_verified
         alldetails['owner']=user.custom_claims.get('owner')
         if user.custom_claims.get('admin'):
             alldetails['admin']=user.custom_claims.get('admin')
@@ -37,6 +40,19 @@ def done():
         return alldetails
     except:
         return jsonify({'message':False}),400
+
+
+@app.route('/deleteaccount/<object>',methods=['POST'])
+def delaccount(object):
+    uid=request.json['uid']
+    id=request.json['id']
+    try:
+        db.collection(object).document(id).delete()
+        auth.delete_user(uid)
+        print('deleted your account successfully ')
+        return jsonify({'message':'deleted your account successfully'}),200
+    except:
+        return jsonify({'message':'error in  deleting your account so your profile should not be empty, please fillup your profile and then delete your account'}),400 
 
 
 @app.route('/resetpassword',methods=['POST'])
@@ -88,9 +104,16 @@ def signup():
         )
         print('user',user.uid)
         auth.set_custom_user_claims(user.uid, {'owner': True})
-        return jsonify({'message': f'Successfully created user {user}'}),200
+        user = pb.auth().sign_in_with_email_and_password(email, password)
+        pb.auth().send_email_verification(user['idToken'])
+        return jsonify({'message': f'Successfully created user and send verification link please activate your account '}),200
     except:
-        return jsonify({'message': 'Error creating user'}),400
+        if email:
+            emailexists=auth.get_user_by_email(email)
+            if(emailexists.uid):
+                return jsonify({'message': 'user is already exists '}),400
+        else:
+            return jsonify({'message': 'error creating in user'}),400
 
 
 @app.route('/csignup',methods=['POST'])
@@ -106,8 +129,16 @@ def csignup():
         )
         print('user',user.uid)
         auth.set_custom_user_claims(user.uid, {'owner': False})
-        return jsonify({'message': f'Successfully created user {user}'}),200
+
+        user1 = pb.auth().sign_in_with_email_and_password(email, password)
+        pb.auth().send_email_verification(user1['idToken'])
+
+        return jsonify({'message': f'Successfully created user and send verification link please activate your account '}),200
     except:
+        if email:
+            emailexists=auth.get_user_by_email(email)
+            if(emailexists.uid):
+                return jsonify({'message': 'user is already exists '}),400
         return jsonify({'message': 'Error creating user'}),400
 
 
@@ -125,8 +156,16 @@ def asignup():
         )
         print('user',user.uid)
         auth.set_custom_user_claims(user.uid, {'admin': True})
-        return jsonify({'message': f'Successfully created user {user}'}),200
+
+        user1 = pb.auth().sign_in_with_email_and_password(email, password)
+        pb.auth().send_email_verification(user1['idToken'])
+
+        return jsonify({'message': f'Successfully created user and send verification link please activate your account '}),200
     except:
+        if email:
+            emailexists=auth.get_user_by_email(email)
+            if(emailexists.uid):
+                return jsonify({'message': 'user is already exists '}),400
         return jsonify({'message': 'Error creating user'}),400
 
 
@@ -146,8 +185,12 @@ def asignin():
                 
         user1= auth.get_user(arr)
         user2=user1.custom_claims.get('admin')
+        user3=user1.email_verified
         if user2:
-            return user
+            if user3:
+                return user
+            else:
+                return jsonify({'message':'please verify your account with your mailId'}),400
         else:
             return jsonify({'message':'You are not admin to access it'}),400
 
@@ -163,7 +206,6 @@ def signin():
         return jsonify({'message':'username and password must not to be empty'})
     try:
         user = pb.auth().sign_in_with_email_and_password(email, password)
-        #user1=auth.get_user(user.uid)
         arr=''
        
         for x in user:
@@ -172,14 +214,20 @@ def signin():
                 
         user1= auth.get_user(arr)
         user2=user1.custom_claims.get('owner')
-        print(user2)
+        user3=user1.email_verified
+        print(user3)
+        #print(user2)
         if user2:
-            return user
+            if user3:
+                return user
+            else:
+                return jsonify({'message':'please verify your account with your mailId'}),400
         else:
             return jsonify({'message':'You are not owner to access it'}),400
-
     except:
         return jsonify({'message':'Error in logging user'}),400
+
+
 
 @app.route('/csignin',methods=['POST'])
 def csignin():
@@ -197,9 +245,13 @@ def csignin():
                 
         cuser1 = auth.get_user(carr)
         cuser2 = cuser1.custom_claims.get('owner')
-        print(cuser2)
+        cuser3=cuser1.email_verified
+       # print(cuser2)
         if not cuser2:
-            return user
+            if cuser3:
+                return user
+            else:
+                return jsonify({'message':'please verify your account with your mailId'}),400
         else:
             return jsonify({'message':'You are not customer to access it'}),400
     except:
