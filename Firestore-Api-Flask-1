@@ -1,4 +1,4 @@
-from flask import Flask,jsonify,request,send_file
+from flask import Flask,jsonify,request,send_file,Blueprint
 from flask_restful import Resource,Api
 import os
 import pyrebase
@@ -16,6 +16,12 @@ from werkzeug.utils import secure_filename
 import io
 from google.cloud import storage
 
+#from flask_wtf.csrf import CSRFProtect
+
+import datetime 
+from google.api_core.datetime_helpers import DatetimeWithNanoseconds
+from flask_wtf import csrf, Form
+import os
 
 app = Flask(__name__)
 CORS(app)
@@ -26,6 +32,14 @@ pb = pyrebase.initialize_app(json.load(open('fbconfig.json')))
 todo_ref = db.collection('todos')
 storage = pb.storage()
 
+SECRET_KEY = os.urandom(32)
+app.config['SECRET_KEY'] = SECRET_KEY
+
+#csrf = CSRFProtect(app)
+
+# api_blueprint = Blueprint('api', __name__)
+# #csrf.exempt(api_blueprint)
+# app.register_blueprint(api_blueprint)
 
 
 @app.route('/getcurrentuser',methods=['POST'])
@@ -48,6 +62,12 @@ def done():
         return alldetails
     except:
         return jsonify({'message':False}),400
+
+
+@app.route('/token',methods=['GET'])
+def token():
+    token=csrf.generate_csrf()
+    return jsonify({'token':token}), 201
 
 
 @app.route('/deleteaccount/<object>',methods=['POST'])
@@ -224,7 +244,7 @@ def asignin():
             return jsonify({'message':'You are not admin to access it'}),400
 
     except:
-        return jsonify({'message':'Error in logging user'}),400
+        return jsonify({'message':'invalid crendentails please enter with valid credentials'}),400
 
 
 @app.route('/signin',methods=['POST'])
@@ -254,7 +274,7 @@ def signin():
         else:
             return jsonify({'message':'You are not owner to access it'}),400
     except:
-        return jsonify({'message':'Error in logging user'}),400
+        return jsonify({'message':'invalid crendentails please enter with valid credentials'}),400
 
 
 
@@ -284,7 +304,7 @@ def csignin():
         else:
             return jsonify({'message':'You are not customer to access it'}),400
     except:
-        return jsonify({'message':'error in logging user'}),400
+        return jsonify({'message':'invalid crendentails please enter with valid credentials'}),400
 
 
 @app.route('/post/<object>', methods=['POST']) 
@@ -294,12 +314,15 @@ def create(object):
         Ensure you pass a custom ID as part of json body in post request
         e.g. json={'id': '1', 'title': 'Write a blog post'}
     """
+    
     try:
+
         #id = request.json['id']
         db.collection(object).add(request.json)
         return jsonify({"success": True}), 200
     except Exception as e:
         return f"An Error Occured: {e}"
+
 
 @app.route('/get/<object>', methods=['GET'])
 def read(object):
@@ -314,8 +337,36 @@ def read(object):
         #todo_id = request.args.get('id')    
         if todo_ref:
             todo = db.collection(object).stream()
+            # query = todo.order_by(u'timestamp', direction=firestore.Query.DESCENDING)
+            # todox=query.stream()
 
             for users in todo:
+                todo1[users.id]=(users.to_dict())
+            return jsonify(todo1), 200
+        else:
+            all_todos = [doc.to_dict() for doc in todo_ref.stream()]
+            return jsonify(all_todos)
+    except Exception as e:
+        return f"An Error Occured: {e}"
+
+
+@app.route('/get1/<object>', methods=['GET'])
+def read1(object):
+    """
+        read() : Fetches documents from Firestore collection as JSON
+        todo : Return document that matches query ID
+        all_todos : Return all documents
+    """
+    try:
+        todo1={}
+        # Check if ID was passed to URL query
+        #todo_id = request.args.get('id')    
+        if todo_ref:
+            todo = db.collection(object)
+            todo = todo.order_by(time('timestamp'), direction=firestore.Query.DESCENDING)
+            todox=todo.stream()
+            
+            for users in todox:
                 #print( users.to_dict())
                 todo1[users.id]=(users.to_dict())
 
@@ -325,6 +376,9 @@ def read(object):
             return jsonify(all_todos)
     except Exception as e:
         return f"An Error Occured: {e}"
+
+def time(obj):
+    return obj
 
 @app.route('/update', methods=['POST', 'PUT'])
 def update():
