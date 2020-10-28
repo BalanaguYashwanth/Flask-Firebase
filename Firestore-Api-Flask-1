@@ -1,6 +1,7 @@
 from flask import Flask,jsonify,request,send_file,Blueprint
 from flask_restful import Resource,Api
 import os
+
 import pyrebase
 import json
 import firebase_admin
@@ -17,6 +18,7 @@ import io
 from google.cloud import storage
 
 #from flask_wtf.csrf import CSRFProtect
+#else
 
 import datetime 
 from google.api_core.datetime_helpers import DatetimeWithNanoseconds
@@ -33,6 +35,7 @@ todo_ref = db.collection('todos')
 storage = pb.storage()
 
 SECRET_KEY = os.urandom(32)
+#print(SECRET_KEY)
 app.config['SECRET_KEY'] = SECRET_KEY
 
 #csrf = CSRFProtect(app)
@@ -41,7 +44,10 @@ app.config['SECRET_KEY'] = SECRET_KEY
 # #csrf.exempt(api_blueprint)
 # app.register_blueprint(api_blueprint)
 
-
+@app.route("/")
+def hello():
+    return "successfully done"
+   
 @app.route('/getcurrentuser',methods=['POST'])
 def done():
     alldetails={}
