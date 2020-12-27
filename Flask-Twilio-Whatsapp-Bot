@@ -1,0 +1,55 @@
+import os
+from flask import Flask, request, jsonify
+from firebase_admin import credentials, firestore, initialize_app
+import firebase_admin
+import pyrebase
+from flask_cors import CORS
+import io
+import json
+from twilio.twiml.messaging_response import MessagingResponse
+import requests 
+import json
+#auth = firebase.auth()
+#from firebase_admin import auth
+
+app=Flask(__name__)
+cred = credentials.Certificate("key.json")
+default_app=firebase_admin.initialize_app(cred)
+CORS(app)
+db = firestore.client()
+todo_ref=db.collection('todos')
+pb = pyrebase.initialize_app(json.load(open('fbconfig.json')))
+
+@app.route("/")
+def home():
+    return "hello all"
+
+@app.route("/sms",methods=['POST'])
+def sms_reply():
+    msg=request.form.get('Body')
+    print(request.form.get('From'))
+    r=requests.get('https://api.themoviedb.org/3/search/movie?api_key=bccdb9a0dfa016855530394f5805018f&language=en-US&query='+msg+'&page=1&include_adult=false')
+    r=json.loads(r.text)
+    all={}
+    for x in r:
+        if x == 'results':
+            if len(r[x])==0:
+                resp=MessagingResponse()
+                resp.message('movie not found')
+                return str(resp)
+                break
+            else:
+                for y in r[x]:
+                    #print(y['original_title'])
+                    all['title']=y['original_title']
+                    all['overview']=y['overview']
+                    all['ratings']=str(y['vote_average'])
+                    break
+                resp=MessagingResponse()
+                resp.message(' Title: '+all['title']+','+' Overview: '+all['overview']+','+'  Ratings: '+(all['ratings']))
+               
+                return str(resp)
+
+
+if __name__=="__main__":
+    app.run(debug=True)
